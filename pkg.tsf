@@ -1,0 +1,5 @@
+name=wikidata
+desc
+	en=Wikidata API for D
+type=native
+target=src

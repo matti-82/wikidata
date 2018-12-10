@@ -1,0 +1,6 @@
+name "wikidata"
+description "Wikidata API for D"
+authors "Matthias Rossmy"
+copyright "Copyright © 2018, Matthias Rossmy"
+license "Fair Use License v2"
+dependency "easyd" version="~>0.5.1"
