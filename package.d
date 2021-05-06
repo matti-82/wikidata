@@ -1,14 +1,34 @@
 module wikidata;
 
-// (C) 2018 by Matthias Rossmy
+// (C) 2018-2021 by Matthias Rossmy
 // This file is distributed under the "Fair Use License v2"
 
 /* Example
-class Planet : WdNamedObject
+class GeoObject : WdObject
 {
-	@WikiDataProp("semi-major axis","kilometer") string dist;
+	@WikiDataProp("?itemDescription") string desc;
 }
-auto planets = WikiData.find("planet").isPartOf("Solar System").sortAsc("dist").getList!Planet;
+class DatePopulation
+{
+	@WikiDataProp("point in time") string date;
+	@WikiDataProp("population") string population;
+}
+
+auto results = WikiData.find("geographic region","Springfield").getList!GeoObject;
+
+foreach(obj;results)
+{		
+	auto history = obj.query("population").sortAsc("date").getList!DatePopulation;
+	if(history.length>0)
+	{
+		writeln("Wikidata Object: ",obj.id);
+		writeln("Description: ",obj.desc);
+		foreach(item;history)
+		{
+			writeln(item.date," ",item.population);
+		}
+	}
+}
 */
 
 public import std.xml;
@@ -83,12 +103,12 @@ class WikiData
 		return result;
 	}
 	
-	static string category2IdList(string name)
+	static string name2IdList(string name, string category="")
 	{
 		auto cacheResult = (name in catCache);
 		if(cacheResult !is null) return *cacheResult;
 		
-		auto resultList = find("",name).getList(codingLang);
+		auto resultList = find(category,name).getList(codingLang);
 		if(resultList.length==0) throw new Exception(name~" does not exist");
 		string result;
 		foreach(item;resultList) result ~= ("(wd:"~item.id~")");
@@ -127,17 +147,30 @@ class WikiData
 		string[string] binding2member;
 		string postfix;
 		
-		Query isPartOf(string category)
+		Query isPartOf(string what)
 		{
-			if(isNativeID(category))
+			if(isNativeID(what))
 			{
-				filters ~= ("?item wdt:P361 wd:"~category);
+				filters ~= ("?item wdt:P361 wd:"~what);
 			}else{
-				filters ~= ("VALUES (?partOf) { "~category2IdList(category)~" }");
+				filters ~= ("VALUES (?partOf) { "~name2IdList(what)~" }");
 				filters ~= "?item wdt:P361 ?partOf";
 			}
 			return this;
 		}
+		
+		/*Query where(string prop, string value) //TODO: diese Funktion mit dem cities-Beispiel funktionsfähig machen
+		{
+			auto pid = propID(prop);
+			if(isNativeID(value))
+			{
+				filters ~= ("?item wdt:"~pid~" wd:"~value);
+			}else{
+				filters ~= ("VALUES (?partOf) { "~name2IdList(value,prop)~" }");
+				filters ~= "?item wdt:"~pid~" ?partOf";
+			}
+			return this;
+		}*/
 		
 		Query bind(string name)
 		{
@@ -296,7 +329,7 @@ class WikiData
 			{
 				q.filters ~= ("?item (wdt:P31/wdt:P279*) wd:"~category);
 			}else{
-				q.filters ~= ("VALUES (?categories) { "~category2IdList(category)~" }");
+				q.filters ~= ("VALUES (?categories) { "~name2IdList(category)~" }");
 				q.filters ~= "?item (wdt:P31/wdt:P279*) ?categories";
 			}
 		}
